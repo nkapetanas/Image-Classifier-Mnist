@@ -1,10 +1,10 @@
-import keras
 import numpy as np
+np.random.seed(1400)
+import keras
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import SGD
 
-np.random.seed(1400)
 from keras.datasets import mnist
 
 NUMBER_OF_CLASSES = 10
