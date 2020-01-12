@@ -1,9 +1,12 @@
 import numpy as np
 np.random.seed(1400)
 import keras
+from keras import backend as K
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import SGD
+from keras.layers import Activation
+from keras.utils.generic_utils import get_custom_objects
 
 from keras.datasets import mnist
 
@@ -11,6 +14,9 @@ NUMBER_OF_CLASSES = 10
 BATCH_SIZE = 128
 EPOCHS = 10
 LEARNING_RATE = 0.01
+
+def leCunActivationFunction(x):
+    return 1.7159 * K.tanh(2/3 * x)
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -36,6 +42,22 @@ def get_model_relu_fiveHL(activation_function):
 
     return model
 
+def get_model_relu_fiveHL_custom_activation(custom_activation):
+    get_custom_objects().update({'custom_activation': Activation(custom_activation)})
+    model = Sequential()
+    model.add(Dense(32, input_shape=(784,)))
+    model.add(Activation(custom_activation))
+    model.add(Dense(32))
+    model.add(Activation(custom_activation))
+    model.add(Dense(32))
+    model.add(Activation(custom_activation))
+    model.add(Dense(32))
+    model.add(Activation(custom_activation))
+    model.add(Dense(32))
+    model.add(Activation(custom_activation))
+    model.add(Dense(NUMBER_OF_CLASSES, activation='softmax'))  # output layer
+
+    return model
 
 # convert class vectors to binary class matrices -> one-hot-vector
 y_train = keras.utils.to_categorical(y_train, NUMBER_OF_CLASSES)
@@ -44,7 +66,8 @@ y_test = keras.utils.to_categorical(y_test, NUMBER_OF_CLASSES)
 
 # model = get_model_relu_fiveHL('relu')
 # model = get_model_relu_fiveHL('tanh')
-model = get_model_relu_fiveHL('sigmoid')
+#model = get_model_relu_fiveHL('sigmoid')
+model = get_model_relu_fiveHL_custom_activation(leCunActivationFunction)
 
 model.summary()
 model.compile(loss='categorical_crossentropy', optimizer=SGD(learning_rate=LEARNING_RATE), metrics=['accuracy'])
