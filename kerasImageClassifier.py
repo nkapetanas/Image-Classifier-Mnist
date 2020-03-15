@@ -15,6 +15,7 @@ from keras.datasets import mnist
 NUMBER_OF_CLASSES = 10
 BATCH_SIZE = 128
 EPOCHS = 10
+EPOCHS_C = 3
 LEARNING_RATE = 0.01
 
 
@@ -54,18 +55,18 @@ def create_plot_Keras_model(field):
 
 
 # plot diagnostic learning curves
-def summarize_diagnostics(histories):
-    for i in range(len(histories)):
-        # plot loss
-        plt.subplot(2, 1, 1)
-        plt.title('Cross Entropy Loss')
-        plt.plot(histories[i].history['loss'], color='blue', label='train')
-        plt.plot(histories[i].history['val_loss'], color='orange', label='test')
-        # plot accuracy
-        plt.subplot(2, 1, 2)
-        plt.title('Classification Accuracy')
-        plt.plot(histories[i].history['accuracy'], color='blue', label='train')
-        plt.plot(histories[i].history['val_accuracy'], color='orange', label='test')
+def summarize_diagnostics(history):
+    # plot loss
+    plt.subplot(2, 1, 1)
+    plt.title('Cross Entropy Loss')
+    plt.plot(history.history['loss'], color='blue', label='train')
+    plt.plot(history.history['val_loss'], color='orange', label='test')
+
+    # plot accuracy
+    plt.subplot(2, 1, 2)
+    plt.title('Classification Accuracy')
+    plt.plot(history.history['accuracy'], color='blue', label='train')
+    plt.plot(history.history['val_accuracy'], color='orange', label='test')
     plt.show()
 
 
@@ -79,6 +80,16 @@ def get_model(activation_function, totalNumberOfLayers):
     model.add(Dense(NUMBER_OF_CLASSES, activation='softmax'))  # output layer
 
     return model
+
+
+# function to obtain grads for each parameter
+def get_gradients(model, inputs, outputs):
+    grads = model.optimizer.get_gradients(model.total_loss, model.trainable_weights)
+    symb_inputs = (model._feed_inputs + model._feed_targets + model._feed_sample_weights)
+    f = K.function(symb_inputs, grads)
+    x, y, weight = model._standardize_user_data(inputs, outputs)
+    output_grad = f(x + y + weight)
+    return np.array(output_grad)
 
 
 def get_model_custom_activation(custom_activation, totalNumberOfLayers):
@@ -131,28 +142,30 @@ y_train = keras.utils.to_categorical(y_train, NUMBER_OF_CLASSES)
 
 y_test = keras.utils.to_categorical(y_test, NUMBER_OF_CLASSES)
 
-######################### 5 Layer Models ############################
-# model = get_model('relu', 5)
+######################### 5 Layer Models #############################
+model = get_model('relu', 5)
 # model = get_model('tanh', 5)
-# model = get_model('sigmoid', 5) TODO CHECK
+# model = get_model('sigmoid', 5)
 
 ######################### 20 Layer Models ############################
 # model = get_model('relu', 20)
 # model = get_model('tanh', 20)
-# model = get_model('sigmoid', 20) TODO CHECK
+# model = get_model('sigmoid', 20)
 
 ######################### 40 Layer Models ############################
 # model = get_model('relu', 40)
 # model = get_model('tanh', 40)
-model = get_model('sigmoid', 40)
+# model = get_model('sigmoid', 40)
 
+######################### LeCun Model ####################
 # model = get_model_custom_activation(leCunActivationFunction, 5)
 
 model.summary()
 model.compile(loss='categorical_crossentropy', optimizer=SGD(learning_rate=LEARNING_RATE),
               metrics=['accuracy', f1, precision_metric, recall_metric])
 
-history = model.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=1, validation_data=(x_test, y_test))
+history = model.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=1,
+                    validation_data=(x_test, y_test))
 
 # evaluate the model
 loss, accuracy, f1_score, precision, recall = model.evaluate(x_test, y_test, verbose=0)
@@ -160,8 +173,23 @@ loss, accuracy, f1_score, precision, recall = model.evaluate(x_test, y_test, ver
 print('Loss: ' + str(loss) + ' Accuracy: ' + str(accuracy) + ' F1: ' + str(f1_score) + ' Precision: ' + str(
     precision) + ' Recall: ' + str(recall))
 
-# print(history.history.keys())
-#
-# create_plot_Keras_model('val_loss')
-# create_plot_Keras_model('val_accuracy')
-# create_plot_Keras_model('accuracy')
+summarize_diagnostics(history)
+print(history.history.keys())
+
+create_plot_Keras_model('val_loss')
+create_plot_Keras_model('val_accuracy')
+create_plot_Keras_model('accuracy')
+
+grads = get_gradients(model, x_train, y_train)
+
+print(grads.shape)
+for i, _ in enumerate(grads):
+    print(grads[i].shape)
+    max_gradient_layer_i = np.max(grads[i])
+    print(max_gradient_layer_i)
+    plt.scatter(i, max_gradient_layer_i, color='blue', marker='x')
+    plt.title('Layer Depth vs. Max Gradient (LeCun)')
+    plt.xlabel('Layer')
+    plt.ylabel('Max Gradient')
+
+plt.show()
